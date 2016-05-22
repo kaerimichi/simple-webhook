@@ -1,15 +1,18 @@
+'use strict'
+
 require('dotenv').config()
 
-var parse = require('co-body')
-var route = require('koa-route')
-var koa = require('koa')
-var app = koa()
+const parse = require('co-body')
+const route = require('koa-route')
+const koa = require('koa')
+const app = koa()
+const moment = require('moment')
 
 function pullRepo (repoAlias, serviceAlias) {
-  var userAlias = process.env.USER_ALIAS
-  var remote = 'git@bitbucket.org:' + userAlias + '/' + repoAlias + '.git'
-  var branch = process.env.DEFAUsLT_BRANCH
-  var deployDir = process.env.DEPLOY_DIR + '/'
+  let userAlias = process.env.USER_ALIAS
+  let remote = 'git@bitbucket.org:' + userAlias + '/' + repoAlias + '.git'
+  let branch = process.env.DEFAULT_BRANCH
+  let deployDir = process.env.DEPLOY_DIR + '/'
 
   return function (callback) {
     return require('simple-git')(deployDir + serviceAlias)
@@ -19,10 +22,22 @@ function pullRepo (repoAlias, serviceAlias) {
   }
 }
 
+app.use(route.get('/', function * () {
+  let responseBody = [
+    '> Webhook is ready!',
+    'Node Version: ' + process.versions.node,
+    'Server Time: ' + moment().format('YYYY-MM-DD HH:mm:ss')
+  ]
+  this.status = 200
+  this.type = 'application/json'
+  this.body = responseBody.join(' | ')
+}))
+
 app.use(route.post('/deploy/:serviceAlias', function * (serviceAlias) {
+  this.type = 'application/json'
   try {
-    var data = yield parse(this)
-    var repoAlias = data.repository.name
+    let data = yield parse(this)
+    let repoAlias = data.repository.name
 
     if (process.env.DEFAULT_GROUP) process.setgid(process.env.DEFAULT_GROUP)
     if (process.env.DEFAULT_USER) process.setuid(process.env.DEFAULT_USER)
@@ -31,14 +46,12 @@ app.use(route.post('/deploy/:serviceAlias', function * (serviceAlias) {
     yield pullRepo(repoAlias, serviceAlias)
 
     this.status = 200
-    this.type = 'application/json'
     this.body = {
       error: false,
       message: 'Worktree updated.'
     }
   } catch (e) {
     this.status = 500
-    this.type = 'application/json'
     this.body = {
       error: true,
       message: 'An error has occurred.'
