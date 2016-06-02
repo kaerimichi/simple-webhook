@@ -7,20 +7,7 @@ const route = require('koa-route')
 const koa = require('koa')
 const app = koa()
 const moment = require('moment')
-
-function pullRepo (repoAlias, serviceAlias) {
-  let userAlias = process.env.USER_ALIAS
-  let remote = 'git@bitbucket.org:' + userAlias + '/' + repoAlias + '.git'
-  let branch = process.env.DEFAULT_BRANCH
-  let deployDir = process.env.DEPLOY_DIR + '/'
-
-  return function (callback) {
-    return require('simple-git')(deployDir + serviceAlias)
-      .reset('hard', callback)
-      .checkout(branch, callback)
-      .pull(remote, branch, callback)
-  }
-}
+const gitHelper = require('./src/gitHelper')
 
 app.use(route.get('/', function * () {
   let responseBody = [
@@ -43,7 +30,7 @@ app.use(route.post('/deploy/:serviceAlias', function * (serviceAlias) {
     if (process.env.DEFAULT_USER) process.setuid(process.env.DEFAULT_USER)
     process.umask(0o002)
 
-    yield pullRepo(repoAlias, serviceAlias)
+    yield gitHelper.pullRepo(repoAlias, serviceAlias)
 
     this.status = 200
     this.body = {
