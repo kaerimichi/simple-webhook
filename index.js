@@ -28,7 +28,6 @@ app.use(route.post('/deploy/:serviceAlias', function * (serviceAlias) {
 
     if (process.env.DEFAULT_GROUP) process.setgid(process.env.DEFAULT_GROUP)
     if (process.env.DEFAULT_USER) process.setuid(process.env.DEFAULT_USER)
-    process.umask(0o002)
 
     yield gitHelper.pullRepo(repoAlias, serviceAlias)
 
